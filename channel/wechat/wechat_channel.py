@@ -23,7 +23,7 @@ from common.time_check import time_checker
 from config import conf, get_appdata_dir
 from lib import itchat
 from lib.itchat.content import *
-
+from weibo import weibo_wrapper
 
 @itchat.msg_register([TEXT, VOICE, PICTURE, NOTE])
 def handler_single_msg(msg):
