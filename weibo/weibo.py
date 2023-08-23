@@ -1333,12 +1333,33 @@ class Weibo(object):
                     writer.writerows([headers])
                 writer.writerows(result_data)
         else:  # python3.x
-
+            existContents = []
+            if not is_first_write:
+                file = open(file_path,'r', encoding="utf-8-sig")
+                existContents = list(csv.reader(file))
+                file.close
+            existIds = []
+            for content in existContents:
+                existIds.append(list(content)[0])
             with open(file_path, "a", encoding="utf-8-sig", newline="") as f:
                 writer = csv.writer(f)
                 if is_first_write:
                     writer.writerows([headers])
-                writer.writerows(result_data)
+                for data in result_data:
+                    dataLst = list(data)
+                    if dataLst[0] not in existIds:
+                        msg = {}
+                        msg['MsgId'] = dataLst[0]
+                        msg['CreateTime'] = dataLst[1]
+                        msg['Type'] = 'Text'
+                        msg['FileName'] = ''
+                        msg['MsgType'] = 8888
+                        msg['Content'] = dataLst[2]
+                        msg['Text'] = dataLst[2]
+                        msg['CreateTime'] = dataLst[1]
+                        msg['CreateTime'] = dataLst[1]
+                        send_out_message(msg)
+                        writer.writerow(data)
         if headers[0] == "id":
             logger.info("%d条微博写入csv文件完毕,保存路径:", self.got_count)
         else:
@@ -1981,6 +2002,11 @@ class Weibo(object):
         except Exception as e:
             logger.exception(e)
 
+from channel.wechat.wechat_channel import WechatMessage
+from channel.wechat.wechat_channel import WechatChannel
+def send_out_message(msg):
+    WechatChannel().handle_weibo_msg(msg)
+    return None
 
 def handle_config_renaming(config, oldName, newName):
     if oldName in config and newName not in config:

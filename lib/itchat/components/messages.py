@@ -276,6 +276,7 @@ def send_raw_msg(self, msgType, content, toUserName):
     headers = { 'ContentType': 'application/json; charset=UTF-8', 'User-Agent' : config.USER_AGENT }
     r = self.s.post(url, headers=headers,
         data=json.dumps(data, ensure_ascii=False).encode('utf8'))
+    logger.info('Request to send a text message to %s: %s' % (url, data))
     return ReturnValue(rawResponse=r)
 
 def send_msg(self, msg='Test Message', toUserName=None):

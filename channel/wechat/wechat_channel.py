@@ -23,7 +23,6 @@ from common.time_check import time_checker
 from config import conf, get_appdata_dir
 from lib import itchat
 from lib.itchat.content import *
-from weibo import weibo_wrapper
 
 @itchat.msg_register([TEXT, VOICE, PICTURE, NOTE])
 def handler_single_msg(msg):
@@ -35,6 +34,16 @@ def handler_single_msg(msg):
     WechatChannel().handle_single(cmsg)
     return None
 
+# from weibo.weibo import send_out_message
+# @send_out_message({})
+# def handler_weibo_msg(msg):
+#     try:
+#         cmsg = WechatMessage(msg, False)
+#     except NotImplementedError as e:
+#         logger.debug("[WX]single message {} skipped: {}".format(msg["MsgId"], e))
+#         return None
+#     WechatChannel().handle_single(cmsg)
+#     return None
 
 @itchat.msg_register([TEXT, VOICE, PICTURE, NOTE], isGroupChat=True)
 def handler_group_msg(msg):
@@ -142,6 +151,33 @@ class WechatChannel(ChatChannel):
     @time_checker
     @_check
     def handle_single(self, cmsg: ChatMessage):
+        if cmsg.ctype == ContextType.VOICE:
+            if conf().get("speech_recognition") != True:
+                return
+            logger.debug("[WX]receive voice msg: {}".format(cmsg.content))
+        elif cmsg.ctype == ContextType.IMAGE:
+            logger.debug("[WX]receive image msg: {}".format(cmsg.content))
+        elif cmsg.ctype == ContextType.PATPAT:
+            logger.debug("[WX]receive patpat msg: {}".format(cmsg.content))
+        elif cmsg.ctype == ContextType.TEXT:
+            logger.debug("[WX]receive text msg: {}, cmsg={}".format(json.dumps(cmsg._rawmsg, ensure_ascii=False), cmsg))
+        else:
+            logger.debug("[WX]receive msg: {}, cmsg={}".format(cmsg.content, cmsg))
+        context = self._compose_context(cmsg.ctype, cmsg.content, isgroup=False, msg=cmsg)
+        if context:
+            self.produce(context)
+            
+    def handle_weibo_msg(self, cmsg: dict):
+        try:
+            msg = cmsg
+            msg['FromUserName'] = self.user_id
+            msg['ToUserName'] = '@@0fddf747cf4c5d0cf4bc34c0225519ed4a7eadf49ec1c01cc6b36a7c9450b7e2'
+            if msg['ToUserName'] == '':
+                return None
+            cmsg = WechatMessage(msg, False)
+        except NotImplementedError as e:
+            logger.debug("[WX]single message {} skipped: {}".format(msg["MsgId"], e))
+            return None
         if cmsg.ctype == ContextType.VOICE:
             if conf().get("speech_recognition") != True:
                 return

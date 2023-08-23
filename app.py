@@ -8,6 +8,7 @@ from channel import channel_factory
 from common.log import logger
 from config import conf, load_config
 from plugins import *
+from weibo import weibo_wrapper
 
 
 def sigterm_handler_wrap(_signo):
