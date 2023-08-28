@@ -167,32 +167,34 @@ class WechatChannel(ChatChannel):
         if context:
             self.produce(context)
             
-    def handle_weibo_msg(self, cmsg: dict):
+    def handle_weibo_msg(self, msg: dict):
         try:
-            msg = cmsg
+            if 'replytype' not in msg.keys() or 'Content' not in msg.keys():
+                return
             msg['FromUserName'] = self.user_id
-            msg['ToUserName'] = '@@0fddf747cf4c5d0cf4bc34c0225519ed4a7eadf49ec1c01cc6b36a7c9450b7e2'
-            if msg['ToUserName'] == '':
+            # friends = itchat.get_friends()
+            # for friend in friends:
+            #     if friend['NickName'] == '流川':
+            #         msg['ToUserName'] = friend['UserName']
+            #         break
+            chatrooms = itchat.get_chatrooms()
+            for chatroom in chatrooms:
+                if chatroom['NickName'] == '好盆友':
+                    msg['ToUserName'] = chatroom['UserName']
+                    break
+            if 'ToUserName' not in msg.keys() or msg['ToUserName'] == '':
                 return None
-            cmsg = WechatMessage(msg, False)
+            if msg['replytype'] == ReplyType.TEXT:
+                reply = Reply(ReplyType.TEXT,msg['Content'])
+                context = Context(ContextType.TEXT,msg['Content'])
+            elif msg['replytype'] == ReplyType.IMAGE:
+                reply = Reply(ReplyType.IMAGE,msg['Content'])
+                context = Context(ContextType.TEXT,msg['Content'])
+            context["receiver"] = msg['ToUserName']
+            self.send(reply,context)
         except NotImplementedError as e:
             logger.debug("[WX]single message {} skipped: {}".format(msg["MsgId"], e))
             return None
-        if cmsg.ctype == ContextType.VOICE:
-            if conf().get("speech_recognition") != True:
-                return
-            logger.debug("[WX]receive voice msg: {}".format(cmsg.content))
-        elif cmsg.ctype == ContextType.IMAGE:
-            logger.debug("[WX]receive image msg: {}".format(cmsg.content))
-        elif cmsg.ctype == ContextType.PATPAT:
-            logger.debug("[WX]receive patpat msg: {}".format(cmsg.content))
-        elif cmsg.ctype == ContextType.TEXT:
-            logger.debug("[WX]receive text msg: {}, cmsg={}".format(json.dumps(cmsg._rawmsg, ensure_ascii=False), cmsg))
-        else:
-            logger.debug("[WX]receive msg: {}, cmsg={}".format(cmsg.content, cmsg))
-        context = self._compose_context(cmsg.ctype, cmsg.content, isgroup=False, msg=cmsg)
-        if context:
-            self.produce(context)
 
     @time_checker
     @_check

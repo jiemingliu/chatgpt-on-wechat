@@ -14,10 +14,12 @@ import re
 import sqlite3
 import sys
 import warnings
+from io import BytesIO
 from collections import OrderedDict
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from time import sleep
+from bs4 import BeautifulSoup
 
 import requests
 from lxml import etree
@@ -28,6 +30,7 @@ import weibo.const as const
 from weibo.util import csvutil
 from weibo.util.dateutil import convert_to_days_ago
 from weibo.util.notify import push_deer
+from bridge.reply import ReplyType
 
 warnings.filterwarnings("ignore")
 
@@ -579,6 +582,11 @@ class Weibo(object):
                         file_suffix = url[index:]
                     file_name = file_prefix + "_" + str(i + 1) + file_suffix
                     file_path = file_dir + os.sep + file_name
+                    if w.get('pics_dir'):
+                        w['pics_dir'] += ','
+                        w['pics_dir'] += file_path
+                    else:
+                        w['pics_dir'] = file_path
                     self.download_one_file(url, file_path, file_type, w["id"])
             else:
                 index = urls.rfind(".")
@@ -588,6 +596,11 @@ class Weibo(object):
                     file_suffix = urls[index:]
                 file_name = file_prefix + file_suffix
                 file_path = file_dir + os.sep + file_name
+                if w.get('pics_dir'):
+                    w['pics_dir'] += ','
+                    w['pics_dir'] += file_path
+                else:
+                    w['pics_dir'] = file_path
                 self.download_one_file(urls, file_path, file_type, w["id"])
         else:
             file_suffix = ".mp4"
@@ -746,12 +759,14 @@ class Weibo(object):
             weibo["screen_name"] = ""
         weibo["id"] = int(weibo_info["id"])
         weibo["bid"] = weibo_info["bid"]
-        text_body = weibo_info["text"]
+        text_body = weibo_info["text"].replace('<br />','\n')
         selector = etree.HTML(f"{text_body}<hr>" if text_body.isspace() else text_body)
         if self.remove_html_tag:
-            weibo["text"] = selector.xpath("string(.)")
+            # weibo["text"] = selector.xpath("string(.)")
+            soup = BeautifulSoup(text_body,'html.parser')
+            weibo["text"] = soup.get_text()
         else:
-            weibo["text"] = text_body
+            weibo["text"] = str(text_body).replace('<br />','\n')
         weibo["article_url"] = self.get_article_url(selector)
         weibo["pics"] = self.get_pics(weibo_info)
         weibo["video_url"] = self.get_video_url(weibo_info)
@@ -1249,6 +1264,8 @@ class Weibo(object):
                     if k == "id":
                         v = str(v) + "\t"
                     wb[k] = v
+            if not w.get('pics_dir'):
+                wb['pics_dir'] = ''
             if not self.only_crawl_original:
                 if w.get("retweet"):
                     wb["is_original"] = False
@@ -1304,6 +1321,8 @@ class Weibo(object):
             "转发数",
             "话题",
             "@用户",
+            "时间",
+            "原始图片本地目录"
         ]
         if not self.only_crawl_original:
             result_headers2 = ["是否原创", "源用户id", "源用户昵称"]
@@ -1354,11 +1373,33 @@ class Weibo(object):
                         msg['Type'] = 'Text'
                         msg['FileName'] = ''
                         msg['MsgType'] = 8888
-                        msg['Content'] = dataLst[2]
-                        msg['Text'] = dataLst[2]
-                        msg['CreateTime'] = dataLst[1]
-                        msg['CreateTime'] = dataLst[1]
+                        msg['Content'] = self.user["screen_name"] + ':\n\n' + dataLst[2]
+                        if len(dataLst) > 21 and dataLst[16] is False:
+                            msg['Content'] += '\n\n@'
+                            msg['Content'] += dataLst[18] + ':\n\n' + dataLst[21]
+                        msg['Text'] = msg['Content']
+                        msg['replytype'] = ReplyType.TEXT
                         send_out_message(msg)
+                        if len(dataLst) > 15 and dataLst[15] is not None:
+                            msg['replytype'] = ReplyType.IMAGE
+                            for s in str(dataLst[15]).split(','):
+                                if not os.path.exists(s) or not os.path.isfile(s):
+                                    continue
+                                file = open(s, "rb")
+                                bytes_io = BytesIO(file.read())
+                                file.close()
+                                msg['Content'] = bytes_io
+                                send_out_message(msg)
+                        if len(dataLst) > 34 and dataLst[34] is not None:
+                            msg['replytype'] = ReplyType.IMAGE
+                            for s in str(dataLst[34]).split(','):
+                                if not os.path.exists(s) or not os.path.isfile(s):
+                                    continue
+                                file = open(s, "rb")
+                                bytes_io = BytesIO(file.read())
+                                file.close()
+                                msg['Content'] = bytes_io
+                                send_out_message(msg)
                         writer.writerow(data)
         if headers[0] == "id":
             logger.info("%d条微博写入csv文件完毕,保存路径:", self.got_count)
@@ -1880,6 +1921,15 @@ class Weibo(object):
     def write_data(self, wrote_count):
         """将爬到的信息写入文件或数据库"""
         if self.got_count > wrote_count:
+            if self.original_pic_download:
+                self.download_files("img", "original", wrote_count)
+            if self.original_video_download:
+                self.download_files("video", "original", wrote_count)
+            if not self.only_crawl_original:
+                if self.retweet_pic_download:
+                    self.download_files("img", "retweet", wrote_count)
+                if self.retweet_video_download:
+                    self.download_files("video", "retweet", wrote_count)
             if "csv" in self.write_mode:
                 self.write_csv(wrote_count)
             if "json" in self.write_mode:
@@ -1890,15 +1940,6 @@ class Weibo(object):
                 self.weibo_to_mongodb(wrote_count)
             if "sqlite" in self.write_mode:
                 self.weibo_to_sqlite(wrote_count)
-            if self.original_pic_download:
-                self.download_files("img", "original", wrote_count)
-            if self.original_video_download:
-                self.download_files("video", "original", wrote_count)
-            if not self.only_crawl_original:
-                if self.retweet_pic_download:
-                    self.download_files("img", "retweet", wrote_count)
-                if self.retweet_video_download:
-                    self.download_files("video", "retweet", wrote_count)
 
     def get_pages(self):
         """获取全部微博"""
