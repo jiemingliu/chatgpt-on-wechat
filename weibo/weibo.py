@@ -1368,16 +1368,10 @@ class Weibo(object):
                     dataLst = list(data)
                     if dataLst[0] not in existIds:
                         msg = {}
-                        msg['MsgId'] = dataLst[0]
-                        msg['CreateTime'] = dataLst[1]
-                        msg['Type'] = 'Text'
-                        msg['FileName'] = ''
-                        msg['MsgType'] = 8888
                         msg['Content'] = self.user["screen_name"] + ':\n\n' + dataLst[2]
                         if len(dataLst) > 21 and dataLst[16] is False:
                             msg['Content'] += '\n\n@'
                             msg['Content'] += dataLst[18] + ':\n\n' + dataLst[21]
-                        msg['Text'] = msg['Content']
                         msg['replytype'] = ReplyType.TEXT
                         send_out_message(msg)
                         if len(dataLst) > 15 and dataLst[15] is not None:
@@ -2079,6 +2073,8 @@ def get_config():
 
 def main():
     try:
+        logger.info("循环一次爬取微博用户")
+
         config = get_config()
         wb = Weibo(config)
         wb.start()  # 爬取微博信息

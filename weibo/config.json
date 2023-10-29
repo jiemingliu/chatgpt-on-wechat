@@ -1,9 +1,9 @@
 {
     "user_id_list": [
-        "7519797263","2014433131"
+        "7519797263","2014433131","5546795997","2115792440"
     ],
     "only_crawl_original": 0,
-    "since_date": 0,
+    "since_date": 1,
     "start_page": 1,
     "write_mode": [
         "csv"

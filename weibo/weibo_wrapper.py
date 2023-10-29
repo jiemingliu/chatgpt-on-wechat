@@ -19,15 +19,15 @@ def start_loop_weibo():
     Returns:
         None
     """
-    schedule_interval = 5
-    schedule.every(schedule_interval).minutes.do(weibo.main)  # 每隔指定的时间间隔执行一次main函数
-    weibo.logger.info('循环间隔设置为%d分钟', schedule_interval)
+    schedule_interval = 8
+    schedule.every(schedule_interval).minutes.at(":25").do(weibo.main)  # 每隔指定的时间间隔执行一次main函数
+    weibo.logger.info('微博循环间隔设置为%d分钟', schedule_interval)
 
     # weibo.main()  # 立即执行一次
     while True:
         try:
             schedule.run_pending()
-            sleep(1)
+            sleep(18)
         except KeyboardInterrupt:
             schedule.cancel_job(weibo.main)
             break

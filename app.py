@@ -9,7 +9,7 @@ from common.log import logger
 from config import conf, load_config
 from plugins import *
 from weibo import weibo_wrapper
-
+# from xueqiu import xueqiu_wrapper
 
 def sigterm_handler_wrap(_signo):
     old_handler = signal.getsignal(_signo)
