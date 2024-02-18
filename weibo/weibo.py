@@ -88,6 +88,7 @@ class Weibo(object):
         self.mysql_config = config.get("mysql_config")  # MySQL数据库连接配置，可以不填
         self.mongodb_URI = config.get("mongodb_URI")  # MongoDB数据库连接字符串，可以不填
         user_id_list = config["user_id_list"]
+        self.to_send_list = config["to_send_list"]
         # 避免卡住
         if isinstance(user_id_list, list):
             random.shuffle(user_id_list)
@@ -342,7 +343,7 @@ class Weibo(object):
         # 这里在读取下一个用户的时候很容易被ban，需要优化休眠时长
         # 加一个count，不需要一上来啥都没干就sleep
         if self.long_sleep_count_before_each_user > 0:
-            sleep_time = random.randint(30, 60)
+            sleep_time = random.randint(50, 60)
             # 添加log，否则一般用户不知道以为程序卡了
             logger.info(f"""短暂sleep {sleep_time}秒，避免被ban""")        
             sleep(sleep_time)
@@ -352,7 +353,7 @@ class Weibo(object):
         js, status_code = self.get_json(params)
         if status_code != 200:
             logger.info("被ban了，需要等待一段时间")
-            sys.exit()
+            sleep(180)
         if js["ok"]:
             info = js["data"]["userInfo"]
             user_info = OrderedDict()
@@ -1373,6 +1374,8 @@ class Weibo(object):
                             msg['Content'] += '\n\n@'
                             msg['Content'] += dataLst[18] + ':\n\n' + dataLst[21]
                         msg['replytype'] = ReplyType.TEXT
+                        msg['user_id'] = self.user['id']
+                        msg['send_to_user_name'] = self.to_send_list[self.user['id']]
                         send_out_message(msg)
                         if len(dataLst) > 15 and dataLst[15] is not None:
                             msg['replytype'] = ReplyType.IMAGE

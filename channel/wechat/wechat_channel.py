@@ -171,17 +171,17 @@ class WechatChannel(ChatChannel):
         try:
             if 'replytype' not in msg.keys() or 'Content' not in msg.keys():
                 return
-            msg['FromUserName'] = self.user_id
-            # friends = itchat.get_friends()
-            # for friend in friends:
-            #     if friend['NickName'] == '流川':
-            #         msg['ToUserName'] = friend['UserName']
-            #         break
-            chatrooms = itchat.get_chatrooms()
-            for chatroom in chatrooms:
-                if chatroom['NickName'] == '好盆友':
-                    msg['ToUserName'] = chatroom['UserName']
+            friends = itchat.get_friends()
+            for friend in friends:
+                if friend['NickName'] == msg['send_to_user_name']:
+                    msg['ToUserName'] = friend['UserName']
                     break
+            if 'ToUserName' not in msg.keys() or msg['ToUserName'] == '':
+                chatrooms = itchat.get_chatrooms()
+                for chatroom in chatrooms:
+                    if chatroom['NickName'] == msg['send_to_user_name']:
+                        msg['ToUserName'] = chatroom['UserName']
+                        break
             if 'ToUserName' not in msg.keys() or msg['ToUserName'] == '':
                 return None
             if msg['replytype'] == ReplyType.TEXT:
