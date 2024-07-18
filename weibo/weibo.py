@@ -343,7 +343,7 @@ class Weibo(object):
         # 这里在读取下一个用户的时候很容易被ban，需要优化休眠时长
         # 加一个count，不需要一上来啥都没干就sleep
         if self.long_sleep_count_before_each_user > 0:
-            sleep_time = random.randint(50, 60)
+            sleep_time = random.randint(30, 60)
             # 添加log，否则一般用户不知道以为程序卡了
             logger.info(f"""短暂sleep {sleep_time}秒，避免被ban""")        
             sleep(sleep_time)
@@ -2039,10 +2039,16 @@ class Weibo(object):
                     self.update_user_config_file(self.user_config_file_path)
         except Exception as e:
             logger.exception(e)
-
+import time
 from channel.wechat.wechat_channel import WechatMessage
 from channel.wechat.wechat_channel import WechatChannel
 def send_out_message(msg):
+    currentTime = time.time()
+    if(currentTime-WechatChannel().timestamp) < 10 :
+        sleep_time = random.randint(10, 20)
+        logger.info(f"""短暂sleep {sleep_time}秒，避免微信被ban""")        
+        sleep(sleep_time)
+        logger.info("发送微信，sleep结束")
     WechatChannel().handle_weibo_msg(msg)
     return None
 

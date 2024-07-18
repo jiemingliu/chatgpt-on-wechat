@@ -118,6 +118,7 @@ class WechatChannel(ChatChannel):
     def __init__(self):
         super().__init__()
         self.receivedMsgs = ExpiredDict(60 * 60)
+        self.timestamp = time.time()
 
     def startup(self):
         itchat.instance.receivingRetryCount = 600  # 修改断线超时时间
